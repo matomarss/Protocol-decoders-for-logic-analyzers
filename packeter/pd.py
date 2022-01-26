@@ -23,10 +23,9 @@ import sigrokdecode as srd
 from common.srdhelper import bcd2int, SrdIntEnum
 import math
 
-a = ['ADDRESS', 'DATA', ]
+a = ['ADDRESS', 'DATA', 'ADDRESS2', 'DATA2', ]
 
 Ann = SrdIntEnum.from_list('Ann', a)
-
 
 class Decoder(srd.Decoder):
     api_version = 3
@@ -54,23 +53,31 @@ class Decoder(srd.Decoder):
     outputs = []
     tags = ['Embedded/industrial']
     annotations = (
-        ('adr', 'Adrs'),
-        ('dt', 'Dat'),
+        ('address', 'Address'),
+        ('data', 'Data'),
+        ('address2', 'Address2'),
+        ('data2', 'Data2'),
     )
     annotation_rows = (
-        ('main', 'MAIN', (Ann.ADDRESS, Ann.DATA,)),
+        ('first', 'First row', (Ann.ADDRESS, Ann.DATA,)),
+        ('second', 'Second row', (Ann.ADDRESS2, Ann.DATA2,)),
     )
 
     def __init__(self):
         self.reset()
 
     def reset(self):
-        self.state = 'NEUTRAL'
-        self.stored_values = []
-        self.separation_sequence_pointer = 0
+        # Almost all global variables are remembered for each row separately
+        self.ss = [0, 0]
+        self.es = [0, 0]
+        self.state = ['NEUTRAL', 'NEUTRAL']
+        self.current_row = 0
+        self.stored_values = [[], []]
+        self.separation_sequence_pointer = [0, 0]
 
     def start(self):
         self.out_ann = self.register(srd.OUTPUT_ANN)
+        # Split the separation sequence string at commas to create a list
         if self.options['use-separator-sequence'] == 'yes':
             self.separation_sequence = str(self.options['packet-separator-sequence']).split(',')
         else:
@@ -81,25 +88,33 @@ class Decoder(srd.Decoder):
             self.output_stored_values(t)
 
     def output_stored_values(self, t):
-        # Outputs all values stored until now with the correct annotation type
-        if len(self.stored_values) == 0:
+        # Outputs all values stored until now at the current row with the correct annotation type and at the correct row
+        if len(self.stored_values[self.current_row]) == 0:
             return
         if t == 'DATA':
-            self.put(self.ss, self.es, self.out_ann, [Ann.DATA, ['Data: ' + self.get_output(), 'Da', 'D']])
+            if self.current_row == 0:
+                self.put(self.ss[0], self.es[0], self.out_ann, [Ann.DATA, ['Data: ' + self.get_output(), 'Da', 'D']])
+            elif self.current_row == 1:
+                self.put(self.ss[1], self.es[1], self.out_ann, [Ann.DATA2, ['Data: ' + self.get_output(), 'Da', 'D']])
         elif t == 'ADDR':
-            self.put(self.ss, self.es, self.out_ann, [Ann.ADDRESS, ['Address: ' + self.get_output(), 'Add', 'A']])
+            if self.current_row == 0:
+                self.put(self.ss[0], self.es[0], self.out_ann, [Ann.ADDRESS, ['Address: ' + self.get_output(), 'Add', 'A']])
+            elif self.current_row == 1:
+                self.put(self.ss[1], self.es[1], self.out_ann, [Ann.ADDRESS2, ['Address: ' + self.get_output(), 'Add', 'A']])
 
-        # Resets the current state, stored values and separation sequence pointer
-        self.reset()
+        # Resets the current state, stored values and separation sequence pointer for the current row
+        self.state[self.current_row] = 'NEUTRAL'
+        self.stored_values[self.current_row] = []
+        self.separation_sequence_pointer[self.current_row] = 0
 
     def have_to_output(self):
         # Returns True if the options indicate that a new packet should be started and the previous one finished
-        return self.options['max-packet-length'] == len(self.stored_values) or self.is_separated_by_sequence()
+        return self.options['max-packet-length'] == len(self.stored_values[self.current_row]) or self.is_separated_by_sequence()
 
     def is_separated_by_sequence(self):
         # Returns True if the sequence separation is active and the pointer indicates the need of separation
         return (self.options['use-separator-sequence'] == 'yes' and
-                0 < len(self.separation_sequence) <= self.separation_sequence_pointer)
+                0 < len(self.separation_sequence) <= self.separation_sequence_pointer[self.current_row])
 
     def move_separation_sequence_pointer(self, value):
         # If the sequence separation is active
@@ -110,32 +125,32 @@ class Decoder(srd.Decoder):
 
         # ...and this value is starting a separation sequence or following an already
         # started separation sequence, move the separation sequence pointer potentially causing separation
-        if str(hex(value).replace("0x", "")) == self.separation_sequence[self.separation_sequence_pointer]:
-            self.separation_sequence_pointer += 1
+        if str(hex(value).replace("0x", "")) == self.separation_sequence[self.separation_sequence_pointer[self.current_row]]:
+            self.separation_sequence_pointer[self.current_row] += 1
         # ...otherwise reset separation sequence pointer
         else:
-            self.separation_sequence_pointer = 0
+            self.separation_sequence_pointer[self.current_row] = 0
 
     def get_output(self):
         # If the options say so, the separation sequence characters should be excluded from the output
         if self.is_separated_by_sequence() and self.options['display-separator-sequence'] == 'no':
             for _ in self.separation_sequence:
-                self.stored_values.pop()
+                self.stored_values[self.current_row].pop()
 
-        # Get the output from the stored values according to output and input binary format options
+        # Get the output from the values stored in the current row according to output and input binary format options
         output = ''
         if self.options['output-format'] == 'dec':
-            for b in self.stored_values:
+            for b in self.stored_values[self.current_row]:
                 if self.options['input-binary-format'] == 'BCD':
                     b = bcd2int(b)
                 output = output + ' ' + str(b)
         elif self.options['output-format'] == 'bin':
-            for b in self.stored_values:
+            for b in self.stored_values[self.current_row]:
                 if self.options['input-binary-format'] == 'BCD':
                     b = bcd2int(b)
                 output = output + ' ' + str(bin(b).replace("0b", ""))
         elif self.options['output-format'] == 'ASCII':
-            for b in self.stored_values:
+            for b in self.stored_values[self.current_row]:
                 if self.options['input-binary-format'] == 'BCD':
                     b = bcd2int(b)
 
@@ -155,7 +170,7 @@ class Decoder(srd.Decoder):
                     b = "\ufffd"
                 output = output + b
         elif self.options['output-format'] == 'hex':
-            for b in self.stored_values:
+            for b in self.stored_values[self.current_row]:
                 if self.options['input-binary-format'] == 'BCD':
                     b = bcd2int(b)
                 output = output + ' ' + hex(b)
@@ -163,43 +178,47 @@ class Decoder(srd.Decoder):
 
     # Any addition to stored values should be done via this method
     def add_to_stored_values(self, value):
-        self.stored_values.append(value)
+        self.stored_values[self.current_row].append(value)
         self.move_separation_sequence_pointer(value)
 
     def decode(self, ss, es, data):
-        cmd, data_value = data
+        cmd, data_value, row = data
+
+        # Data values are stored for each row separately and separation conditions are checked for each row separately
+        # Therefore, current_row has to be set before the processing of the next data value can start
+        self.current_row = row
 
         # State machine.
-        if self.state == 'NEUTRAL':
-            self.ss = ss
+        if self.state[self.current_row] == 'NEUTRAL':
+            self.ss[self.current_row] = ss
 
         if cmd == 'DATA':
             # If has not finished collecting an ADDRESS packet yet, finish it now
-            if self.state == 'RECEIVING ADDRESS':
+            if self.state[self.current_row] == 'RECEIVING ADDRESS':
                 self.output_stored_values('ADDR')
-                self.ss = ss
+                self.ss[self.current_row] = ss
 
-            # We are receiving DATA packets now
-            self.state = 'RECEIVING DATA'
-            # Set the end of the current packet for now
-            self.es = es
+            # On this row we are receiving DATA packets now
+            self.state[self.current_row] = 'RECEIVING DATA'
+            # Set the end of the current packet on this row for now
+            self.es[self.current_row] = es
 
             self.add_to_stored_values(data_value)
 
-            # Send all data values stored until now if it is suitable and clear the buffer
+            # Send all data values stored in this row until now if it is necessary and clear the buffer
             self.manage_stored_values('DATA')
         elif cmd == 'ADDRESS':
             # If has not finished collecting a DATA packet yet, finish it now
-            if self.state == 'RECEIVING DATA':
+            if self.state[self.current_row] == 'RECEIVING DATA':
                 self.output_stored_values('DATA')
-                self.ss = ss
+                self.ss[self.current_row] = ss
 
-            # We are receiving ADDRESS packets now
-            self.state = 'RECEIVING ADDRESS'
-            # Set the end of the current packet for now
-            self.es = es
+            # On this row we are receiving ADDRESS packets now
+            self.state[self.current_row] = 'RECEIVING ADDRESS'
+            # Set the end of the current packet on this row for now
+            self.es[self.current_row] = es
 
             self.add_to_stored_values(data_value)
 
-            # Send all address values stored until now if it is suitable and clear the buffer
+            # Send all address values stored in this row until now if it is necessary and clear the buffer
             self.manage_stored_values('ADDR')

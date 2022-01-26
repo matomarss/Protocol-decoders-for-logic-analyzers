@@ -61,9 +61,9 @@ class Decoder(srd.Decoder):
     def putp(self, data):
         self.put(self.ss, self.es, self.out_python, data)
 
-    def send_data_value(self, b):
-        # Send value of received data of type DATA
-        self.putp(['DATA', b])
+    def send_data_value(self, b, rxtx):
+        # Send the value of the received data of type DATA onto row no. rxtx
+        self.putp(['DATA', b, rxtx])
 
     def decode(self, ss, es, data):
         cmd, rxtx, data_value_and_bits = data
@@ -77,7 +77,7 @@ class Decoder(srd.Decoder):
         elif cmd == 'STOPBIT':
             self.state = 'INACTIVE'
             # STOPBIT means end of a packet
-            self.putp(['PACKET END', 0])
+            self.putp(['PACKET END', 0, rxtx])
         elif cmd == 'DATA':
             # Send just value of received data packet without individual bits
-            self.send_data_value(data_value_and_bits[0])
+            self.send_data_value(data_value_and_bits[0], rxtx)

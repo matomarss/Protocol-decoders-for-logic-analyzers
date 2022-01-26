@@ -64,12 +64,12 @@ class Decoder(srd.Decoder):
         self.put(self.ss, self.es, self.out_python, data)
 
     def send_address_byte(self, b):
-        # send address byte of type ADDRESS
-        self.putp(['ADDRESS', b])
+        # send the address byte of type ADDRESS onto row no. 0
+        self.putp(['ADDRESS', b, 0])
 
     def send_data_byte(self, b):
-        # send data byte of type DATA
-        self.putp(['DATA', b])
+        # send the data byte of type DATA onto row no. 0
+        self.putp(['DATA', b, 0])
 
     def decode(self, ss, es, data):
         cmd, data_byte = data
@@ -88,12 +88,12 @@ class Decoder(srd.Decoder):
             self.state = 'ACTIVE'
             # START REPEAT means an end of a packet
             if cmd == 'START REPEAT':
-                self.putp(['PACKET END', 0])
+                self.putp(['PACKET END', 0, 0])
             return
         elif cmd == 'STOP':
             self.state = 'INACTIVE'
             # STOP means an end of a packet
-            self.putp(['PACKET END', 0])
+            self.putp(['PACKET END', 0, 0])
             return
 
         if self.state == 'ACTIVE':

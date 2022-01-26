@@ -44,10 +44,6 @@ class Decoder(srd.Decoder):
     license = 'gplv2+'
     inputs = ['spi']
     outputs = ['dataBytes']
-    options = (
-        {'id': 'miso-mosi', 'desc': 'Display MISO or MOSI communication',
-         'default': 'MISO', 'values': ('MISO', 'MOSI')},
-    )
     tags = ['Embedded/industrial']
     annotations = ()
     annotation_rows = ()
@@ -64,9 +60,9 @@ class Decoder(srd.Decoder):
     def putp(self, data):
         self.put(self.ss, self.es, self.out_python, data)
 
-    def send_data(self, b):
-        # Send received data packet of type DATA
-        self.putp(['DATA', b])
+    def send_data(self, b, r):
+        # Send the received data packet of type DATA onto row no. r
+        self.putp(['DATA', b, r])
 
     def decode(self, ss, es, data):
         cmd, mosi, miso = data
@@ -74,9 +70,9 @@ class Decoder(srd.Decoder):
         self.ss, self.es = ss, es
 
         if cmd == 'DATA':
-            # If MOSI is sending a packet and the right option is selected, pass it on as a single packet
-            if mosi is not None and self.options['miso-mosi'] == 'MOSI':
-                self.send_data(mosi)
-            # If MISO is sending a packet and the right option is selected, pass it on as a single packet
-            if miso is not None and self.options['miso-mosi'] == 'MISO':
-                self.send_data(miso)
+            # If MOSI is sending a packet, pass it on as a single packet onto row no. 1
+            if mosi is not None:
+                self.send_data(mosi, 1)
+            # If MISO is sending a packet, pass it on as a single packet onto row no. 0
+            if miso is not None:
+                self.send_data(miso, 0)

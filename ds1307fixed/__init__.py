@@ -20,7 +20,10 @@
 
 '''
 This decoder stacks on top of the 'i2c' PD and decodes the Dallas DS1307
-real-time clock (RTC) specific registers and commands.
+real-time clock (RTC) specific registers and commands. This is a fixed version of this decoder capable of decoding
+communication that starts with reading from registers without needing to specify the address of the register where the
+reading starts. In this version, the decoder is also capable of visualizing that only some registers
+were read from/written to.
 '''
 
 from .pd import Decoder

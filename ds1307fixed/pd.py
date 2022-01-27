@@ -187,6 +187,7 @@ class Decoder(srd.Decoder):
         self.putd(7, 0, [Ann.REG_RAM, ['RAM', 'R']])
         self.putd(7, 0, [Ann.BIT_RAM, ['SRAM: 0x%02X' % b, '0x%02X' % b]])
 
+    # Túto metódu som pridal vrámci TODO: možnosť zobrazovania len časti čítaných/zapisovaných údajov
     def get_stored_values(self):
         output = ""
         if self.seconds != -1:
@@ -215,6 +216,7 @@ class Decoder(srd.Decoder):
         self.years = -1
 
     def output_datetime(self, cls, rw):
+        # Tu som pridal TODO: možnosť zobrazovania len časti čítaných/zapisovaných údajov
         if (self.days == -1 or self.date == -1 or self.months == -1 or self.years == -1
                 or self.hours == -1 or self.minutes == -1 or self.seconds == -1):
             d = self.get_stored_values()
@@ -265,14 +267,15 @@ class Decoder(srd.Decoder):
             self.ss_block = ss
         elif self.state == 'GET SLAVE ADDR':
             # Wait for an address read/write operation.
-            if cmd != 'ADDRESS WRITE' and cmd != 'ADDRESS READ':
+            if cmd != 'ADDRESS WRITE' and cmd != 'ADDRESS READ': # aby bolo možné dekódovanie nového typu komunikácie popísanej v reporte, musí tu byť možnosť hned na začiatku komunikacie dekódovať ADDRESS READ
                 return
             if not self.is_correct_chip(databyte):
                 self.state = 'IDLE'
                 return
-            if cmd == 'ADDRESS WRITE':
+            # Tu som pridal možnosť, aby dekóder zistil a rozlíšil, či bude komunikácia typu Figure 5. Data Read zo špecifikácie v reporte. Zvyšné 2 boli už predtým rozlíšené na inom mieste v kóde.
+            if cmd == 'ADDRESS WRITE':  # ak sme dekódovali ADDRESS WRITE, nasledovať bude čítanie adresy registra, kde sa začne čítanie
                 self.state = 'GET REG ADDR'
-            elif cmd == 'ADDRESS READ':
+            elif cmd == 'ADDRESS READ':  # ak sme dekódovali ADDRESS READ, tak bude rovno nasledovať čítanie z registrov
                 self.state = 'READ RTC REGS'
         elif self.state == 'GET REG ADDR':
             # Wait for a data write (master selects the slave register).
@@ -282,7 +285,7 @@ class Decoder(srd.Decoder):
             self.state = 'WRITE RTC REGS'
         elif self.state == 'WRITE RTC REGS':
             # If we see a Repeated Start here, it's an RTC read.
-            if cmd == 'START REPEAT':
+            if cmd == 'START REPEAT':  # tu sa rozlišuje, či bude komunikácia pokračovať ako Figure 6. Data Read zo špecifikácie v reporte (to som ale ja nepridával)
                 self.state = 'GET SLAVE READ ADDR'
                 return
             # Otherwise: Get data bytes until a STOP condition occurs.

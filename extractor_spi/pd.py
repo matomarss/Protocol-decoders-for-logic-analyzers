@@ -25,7 +25,6 @@ Packet:
 
 <ptype>:
  - 'DATA'
- - 'PACKET END' (<pdata>: 0)
 
 <pdata> is the data byte associated with the 'DATA'
 command.

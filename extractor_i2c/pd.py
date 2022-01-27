@@ -26,7 +26,6 @@ Packet:
 <ptype>:
  - 'ADDRESS
  - 'DATA'
- - 'PACKET END' (<pdata>: 0)
 
 <pdata> is the data or address byte associated with the 'ADDRESS' or 'DATA'
 command.
@@ -86,14 +85,9 @@ class Decoder(srd.Decoder):
         # State machine.
         if cmd == 'START' or cmd == 'START REPEAT':
             self.state = 'ACTIVE'
-            # START REPEAT means an end of a packet
-            if cmd == 'START REPEAT':
-                self.putp(['PACKET END', 0, 0])
             return
         elif cmd == 'STOP':
             self.state = 'INACTIVE'
-            # STOP means an end of a packet
-            self.putp(['PACKET END', 0, 0])
             return
 
         if self.state == 'ACTIVE':

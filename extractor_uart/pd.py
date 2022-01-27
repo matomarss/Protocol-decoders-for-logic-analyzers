@@ -26,7 +26,6 @@ Packet:
 <ptype>:
  - 'ADDRESS
  - 'DATA'
- - 'PACKET END' (<pdata>: 0)
 
 <pdata> is the data value associated with the 'DATA'
 command.
@@ -76,8 +75,6 @@ class Decoder(srd.Decoder):
             self.state = 'ACTIVE'
         elif cmd == 'STOPBIT':
             self.state = 'INACTIVE'
-            # STOPBIT means end of a packet
-            self.putp(['PACKET END', 0, rxtx])
         elif cmd == 'DATA':
-            # Send just value of received data packet without individual bits
+            # Send just the value of the received data packet without the individual bits
             self.send_data_value(data_value_and_bits[0], rxtx)

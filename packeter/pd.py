@@ -73,7 +73,7 @@ class Decoder(srd.Decoder):
         self.state = ['NEUTRAL', 'NEUTRAL']
         self.current_row = 0
         self.stored_values = [[], []]
-        self.separation_sequence_pointer = [0, 0]
+        self.separation_sequence_pointer_set = [{0}, {0}]
 
     def start(self):
         self.out_ann = self.register(srd.OUTPUT_ANN)
@@ -96,25 +96,29 @@ class Decoder(srd.Decoder):
                 self.put(self.ss[0], self.es[0], self.out_ann, [Ann.DATA, ['Data: ' + self.get_output(), 'Da', 'D']])
             elif self.current_row == 1:
                 self.put(self.ss[1], self.es[1], self.out_ann, [Ann.DATA2, ['Data: ' + self.get_output(), 'Da', 'D']])
-        elif t == 'ADDR':
+        elif t == 'ADDRESS':
             if self.current_row == 0:
                 self.put(self.ss[0], self.es[0], self.out_ann, [Ann.ADDRESS, ['Address: ' + self.get_output(), 'Add', 'A']])
             elif self.current_row == 1:
                 self.put(self.ss[1], self.es[1], self.out_ann, [Ann.ADDRESS2, ['Address: ' + self.get_output(), 'Add', 'A']])
 
-        # Resets the current state, stored values and separation sequence pointer for the current row
+        # Resets the current state, stored values and separation sequence pointers for the current row
         self.state[self.current_row] = 'NEUTRAL'
         self.stored_values[self.current_row] = []
-        self.separation_sequence_pointer[self.current_row] = 0
+        self.separation_sequence_pointer_set[self.current_row] = {0}
 
     def have_to_output(self):
         # Returns True if the options indicate that a new packet should be started and the previous one finished
         return self.options['max-packet-length'] == len(self.stored_values[self.current_row]) or self.is_separated_by_sequence()
 
     def is_separated_by_sequence(self):
-        # Returns True if the sequence separation is active and the pointer indicates the need of separation
-        return (self.options['use-separator-sequence'] == 'yes' and
-                0 < len(self.separation_sequence) <= self.separation_sequence_pointer[self.current_row])
+        # Returns True if the sequence separation is active and one of the pointers indicates a need for separation
+        if self.options['use-separator-sequence'] == 'no' or len(self.separation_sequence) == 0:
+            return False
+        for p in self.separation_sequence_pointer_set[self.current_row]:
+            if p >= len(self.separation_sequence):
+                return True
+        return False
 
     def move_separation_sequence_pointer(self, value):
         # If the sequence separation is active
@@ -124,12 +128,13 @@ class Decoder(srd.Decoder):
             value = bcd2int(value)
 
         # ...and this value is starting a separation sequence or following an already
-        # started separation sequence, move the separation sequence pointer potentially causing separation
-        if str(hex(value).replace("0x", "")) == self.separation_sequence[self.separation_sequence_pointer[self.current_row]]:
-            self.separation_sequence_pointer[self.current_row] += 1
-        # ...otherwise reset separation sequence pointer
-        else:
-            self.separation_sequence_pointer[self.current_row] = 0
+        # started separation sequence, move the separation sequence pointers, which might
+        # potentially cause separation
+        new_set = {0}
+        for p in self.separation_sequence_pointer_set[self.current_row]:
+            if str(hex(value).replace("0x", "")) == self.separation_sequence[p]:
+                new_set.add(p+1)
+        self.separation_sequence_pointer_set[self.current_row] = new_set
 
     def get_output(self):
         # If the options say so, the separation sequence characters should be excluded from the output
@@ -139,41 +144,35 @@ class Decoder(srd.Decoder):
 
         # Get the output from the values stored in the current row according to output and input binary format options
         output = ''
-        if self.options['output-format'] == 'dec':
-            for b in self.stored_values[self.current_row]:
-                if self.options['input-binary-format'] == 'BCD':
-                    b = bcd2int(b)
-                output = output + ' ' + str(b)
-        elif self.options['output-format'] == 'bin':
-            for b in self.stored_values[self.current_row]:
-                if self.options['input-binary-format'] == 'BCD':
-                    b = bcd2int(b)
-                output = output + ' ' + str(bin(b).replace("0b", ""))
-        elif self.options['output-format'] == 'ASCII':
-            for b in self.stored_values[self.current_row]:
-                if self.options['input-binary-format'] == 'BCD':
-                    b = bcd2int(b)
+        for b in self.stored_values[self.current_row]:
+            if self.options['input-binary-format'] == 'BCD':
+                b = bcd2int(b)
 
-                # If the output format is ASCII, visualize only characters with codes from 32 up to 126
+            if self.options['output-format'] == 'dec':
+                b = str(b)
+            elif self.options['output-format'] == 'bin':
+                b = str(bin(b).replace("0b", ""))
+            elif self.options['output-format'] == 'hex':
+                b = hex(b)
+            elif self.options['output-format'] == 'ASCII':
+                # If the output format is ASCII, visualize only characters with codes from range 33 to 126
                 # and use special symbols for the other codes
-                if b == 10:
-                    b = "\u240a"
+                if 33 <= b <= 126:
+                    b = chr(b)
                 elif b == 13:
                     b = "\u240d"
                 elif b == 32:
                     b = "\u2423"
                 elif b == 9:
                     b = "\u21e5"
-                elif 126 >= b >= 32:
-                    b = chr(b)
+                elif b == 10:
+                    b = "\u240a"
                 else:
                     b = "\ufffd"
-                output = output + b
-        elif self.options['output-format'] == 'hex':
-            for b in self.stored_values[self.current_row]:
-                if self.options['input-binary-format'] == 'BCD':
-                    b = bcd2int(b)
-                output = output + ' ' + hex(b)
+
+            if output != "" and self.options['output-format'] != 'ASCII':
+                b = " " + b
+            output = output + b
         return output
 
     # Any addition to stored values should be done via this method
@@ -192,33 +191,19 @@ class Decoder(srd.Decoder):
         if self.state[self.current_row] == 'NEUTRAL':
             self.ss[self.current_row] = ss
 
-        if cmd == 'DATA':
-            # If has not finished collecting an ADDRESS packet yet, finish it now
-            if self.state[self.current_row] == 'RECEIVING ADDRESS':
-                self.output_stored_values('ADDR')
+        if cmd == 'DATA' or cmd == 'ADDRESS':
+            # If the type of the next packet on this row changes,
+            # finish packing the previous packet and send it to the output
+            if (self.state[self.current_row] == 'DATA' and cmd == 'ADDRESS') \
+                    or (self.state[self.current_row] == 'ADDRESS' and cmd == 'DATA'):
+                self.output_stored_values(self.state[self.current_row])
                 self.ss[self.current_row] = ss
 
-            # On this row we are receiving DATA packets now
-            self.state[self.current_row] = 'RECEIVING DATA'
-            # Set the end of the current packet on this row for now
+            # On this row we are receiving packets of type corresponding to the cmd
+            self.state[self.current_row] = cmd
+            # Set the end of the current packet to be the end of the whole packet collected until now
             self.es[self.current_row] = es
-
             self.add_to_stored_values(data_value)
 
             # Send all data values stored in this row until now if it is necessary and clear the buffer
-            self.manage_stored_values('DATA')
-        elif cmd == 'ADDRESS':
-            # If has not finished collecting a DATA packet yet, finish it now
-            if self.state[self.current_row] == 'RECEIVING DATA':
-                self.output_stored_values('DATA')
-                self.ss[self.current_row] = ss
-
-            # On this row we are receiving ADDRESS packets now
-            self.state[self.current_row] = 'RECEIVING ADDRESS'
-            # Set the end of the current packet on this row for now
-            self.es[self.current_row] = es
-
-            self.add_to_stored_values(data_value)
-
-            # Send all address values stored in this row until now if it is necessary and clear the buffer
-            self.manage_stored_values('ADDR')
+            self.manage_stored_values(cmd)

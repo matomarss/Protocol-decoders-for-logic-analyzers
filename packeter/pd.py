@@ -32,7 +32,7 @@ class Decoder(srd.Decoder):
     id = 'packeter'
     name = 'Packeter'
     longname = 'The Packeter'
-    desc = 'Alters input according to options.'
+    desc = 'Visualizes extracted data in packets according to options.'
     license = 'gplv2+'
     inputs = ['dataBytes']
     options = (

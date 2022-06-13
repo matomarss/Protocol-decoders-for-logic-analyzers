@@ -2,6 +2,7 @@
  * This file is part of the PulseView project.
  *
  * Copyright (C) 2014 Joel Holdsworth <joel@airwebreathe.org.uk>
+ * Copyright (C) 2022 Matej Matincek <martincek8@uniba.sk>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,10 +68,13 @@ QString Flag::get_text() const
 		s = text_;
 	else
     {
+        // START of the code added by me:
+        // Calculates the "distance/time" to the item referenced by the cursor
         const QString time = Ruler::format_time_with_distance(
                 ref_item->time(), ref_item->delta(time_),
                 view_.tick_prefix(), view_.time_unit(), view_.tick_precision());
-
+        // If time is set to be used (not just samples), calculate the frequency
+        // in the right format using format_value_si function
         if(view_.time_unit() == pv::util::TimeUnit::Time)
         {
             const QString freq = util::format_value_si(1/abs(ref_item->delta(time_).convert_to<double>()),
@@ -80,6 +84,7 @@ QString Flag::get_text() const
         }
         else
             s = time;
+        // END of the code added by me:
     }
 
 	return s;
@@ -100,7 +105,6 @@ QRectF Flag::label_rect(const QRectF &rect) const
 	if (!ref_item || (ref_item.get() == this)) {
 		r = TimeMarker::label_rect(rect);
 	} else {
-		// TODO: Remove code duplication between here and cursor.cpp
 		const float x = get_x();
 
 		QFontMetrics m(QApplication::font());

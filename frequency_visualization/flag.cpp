@@ -105,6 +105,7 @@ QRectF Flag::label_rect(const QRectF &rect) const
 	if (!ref_item || (ref_item.get() == this)) {
 		r = TimeMarker::label_rect(rect);
 	} else {
+        // TODO: Remove code duplication between here and cursor.cpp
 		const float x = get_x();
 
 		QFontMetrics m(QApplication::font());

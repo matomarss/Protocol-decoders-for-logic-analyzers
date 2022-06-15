@@ -1,5 +1,5 @@
 --- flag_original.cpp	2022-06-14 13:38:57.990871200 +0200
-+++ flag.cpp	2022-06-14 13:50:59.214584100 +0200
++++ flag.cpp	2022-06-16 00:29:40.696058600 +0200
 @@ -1,172 +1,189 @@
 -/*
 - * This file is part of the PulseView project.
@@ -253,8 +253,8 @@
 +        {
 +            const QString freq = util::format_value_si(1/abs(ref_item->delta(time_).convert_to<double>()),
 +                  pv::util::SIPrefix::unspecified,
-+                   0, "Hz", false);
-+            s = QString("%1 / %2").arg(freq, time);
++                   2, "Hz", false);
++            s = QString("%1 (%2)").arg(time, freq);
 +        }
 +        else
 +            s = time;

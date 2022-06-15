@@ -79,8 +79,8 @@ QString Flag::get_text() const
         {
             const QString freq = util::format_value_si(1/abs(ref_item->delta(time_).convert_to<double>()),
                   pv::util::SIPrefix::unspecified,
-                   0, "Hz", false);
-            s = QString("%1 / %2").arg(freq, time);
+                   2, "Hz", false);
+            s = QString("%1 (%2)").arg(time, freq);
         }
         else
             s = time;

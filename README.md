@@ -1,3 +1,5 @@
+---1. semester
+
 Návod na inštaláciu dekodérov:
 1. Jednotlivé priečinky s dekódermi skopírujte na miesto inštalácie PulseView. Presnejšie do miesto_instalacie\sigrok\PulseView\share\libsigrokdecode\decoders.
 2. Teraz by sa už mali dať tieto dekódery používať v PulseView.
@@ -14,12 +16,19 @@ Hodnoty zadávate bez 0x a oddelujete ich čiarkou bez medzier. (napr. by ste tu
 Návod na použitie fixed DS1307 dekodéra:
 1. Dekodér nasaďte nad dekodér komunikácie i2c, ktorá predstavuje komunikáciu DS1307 RTC hodín.
 
-Návod na inštaláciu a spustenie pulseview s vizualizáciou frekvencie popri vzdialenosti vo flagoch (len na Linux-e):
-1. Nainštalujte si všetky požiadavky a naklonujte zdrojový kód pulseview podľa návodu: https://sigrok.org/wiki/Linux#PulseView 
-2. Po naklonovaní vložte súbor z priečinka frequency_visualization do pulseview/pv/views/trace
+
+
+---2. semester
+
+Návod na inštaláciu a spustenie PulseView s mnou pridaným kódom (len na Linux-e):
+1. Nainštalujte si všetky požiadavky a naklonujte zdrojový kód PulseView podľa návodu (odporúčaná distribúcia a verzia Linuxu Ubuntu 20.04 LTS): https://sigrok.org/wiki/Linux#PulseView 
+2. Po naklonovaní vložte súbor flag.cpp z priečinka frequency_visualization do pulseview/pv/views/trace
+3. Ďalej vložte súbory view.cpp, view.hpp, tracetreeitem.cpp, tracetreeitem.hpp, ruler.cpp, ruler.hpp z priečinka zoom_and_view_reset do pulseview/pv/views/trace
 3. Pokračujte podľa návodu od príkazu cmake .
 4. Spustite skompilovaný program pulseview v priečinku pulseview príkazom ./pulseview
 
 Návod na otestovanie fungovania takto upraveného programu:
 1. Po spustení PulseView môžete pridávať zelené markery (flagy) na časovú os dvojklikom a zobrazovať kurzory pomocou tlačidla "Show Cursors".
 2. Pri podržaní myši nad flagom alebo kurzorom sa vo zvyšných flagoch zobrazí ich vzdialenosť od flagu/kurzora, nad ktorým sa práve nachádza myš, spolu s frekvenciou.
+
+3. Po kliknutí pravým tlačítkom myši na pravítko alebo oblasť záznamu sa zobrazí kontextové okno, z ktorého je možné možnosťami "Reset view" a "Reset zoom" resetovať pohľad na časovej osi na 0 a resetovať priblíženie na predvolenú hodnotu.

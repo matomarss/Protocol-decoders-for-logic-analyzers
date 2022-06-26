@@ -1,0 +1,38 @@
+--- original_flag.cpp	2022-06-27 00:34:54.947605800 +0200
++++ flag.cpp	2022-06-27 00:54:02.888833500 +0200
+@@ -66,9 +66,23 @@
+ 	if (!ref_item || (ref_item.get() == this))
+ 		s = text_;
+ 	else
+-		s = Ruler::format_time_with_distance(
+-			ref_item->time(), ref_item->delta(time_),
+-			view_.tick_prefix(), view_.time_unit(), view_.tick_precision());
++    {
++        // Calculates the "distance/time" to the item referenced by the cursor
++        const QString time = Ruler::format_time_with_distance(
++                ref_item->time(), ref_item->delta(time_),
++                view_.tick_prefix(), view_.time_unit(), view_.tick_precision());
++        // If time is set to be used (not just samples), calculate the frequency
++        // in the right format using format_value_si function
++        if(view_.time_unit() == pv::util::TimeUnit::Time)
++        {
++            const QString freq = util::format_value_si(1/abs(ref_item->delta(time_).convert_to<double>()),
++                  pv::util::SIPrefix::unspecified,
++                   12, "Hz", false);
++            s = QString("%1 (%2)").arg(time, freq);
++        }
++        else
++            s = time;
++    }
+ 
+ 	return s;
+ }
+@@ -88,7 +102,7 @@
+ 	if (!ref_item || (ref_item.get() == this)) {
+ 		r = TimeMarker::label_rect(rect);
+ 	} else {
+-		// TODO: Remove code duplication between here and cursor.cpp
++       // TODO: Remove code duplication between here and cursor.cpp
+ 		const float x = get_x();
+ 
+ 		QFontMetrics m(QApplication::font());

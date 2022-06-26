@@ -1,0 +1,13 @@
+--- original_view.hpp	2022-06-27 00:34:55.110681100 +0200
++++ view.hpp	2022-06-27 00:28:59.404431800 +0200
+@@ -184,6 +184,10 @@
+ 
+ 	void reset_zero_position();
+ 
++    void reset_offset();
++
++    void reset_zoom();
++
+ 	pv::util::Timestamp zero_offset() const;
+ 
+ 	/**

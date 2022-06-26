@@ -1,0 +1,21 @@
+--- original_view.cpp	2022-06-27 00:34:55.105798300 +0200
++++ view.cpp	2022-06-27 00:28:53.390037100 +0200
+@@ -602,6 +602,18 @@
+ 	}
+ }
+ 
++void View::reset_offset()
++{
++    set_offset(-zero_offset_, true);
++    ruler_->update();
++    viewport_->update();
++}
++
++void View::reset_zoom()
++{
++    set_zoom(1e-3, 0);
++}
++
+ const Timestamp& View::offset() const
+ {
+ 	return offset_;

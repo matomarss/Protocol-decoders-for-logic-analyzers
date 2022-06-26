@@ -1,0 +1,52 @@
+--- original_ruler.cpp	2022-06-27 00:34:54.994479900 +0200
++++ ruler.cpp	2022-06-27 00:28:51.735212800 +0200
+@@ -149,6 +149,17 @@
+ 	context_menu_x_pos_ = event->pos().x();
+ 
+ 	QMenu *const menu = new QMenu(this);
++    if(view_.ruler_offset().convert_to<double>() != 0){
++        QAction *const reset_view = new QAction(tr("Reset view"), this);
++        connect(reset_view, SIGNAL(triggered()), this, SLOT(on_view_reset()));
++        menu->addAction(reset_view);
++    }
++
++    if(view_.scale() != 1e-3) {
++        QAction *const reset_zoom = new QAction(tr("Reset zoom"), this);
++        connect(reset_zoom, SIGNAL(triggered()), this, SLOT(on_zoom_reset()));
++        menu->addAction(reset_zoom);
++    }
+ 
+ 	QAction *const create_marker = new QAction(tr("Create marker here"), this);
+ 	connect(create_marker, SIGNAL(triggered()), this, SLOT(on_createMarker()));
+@@ -395,12 +406,12 @@
+ 
+ void Ruler::on_createMarker()
+ {
+-	hover_item_ = view_.add_flag(get_absolute_time_from_x_pos(mouse_down_point_.x()));
++	hover_item_ = view_.add_flag(get_absolute_time_from_x_pos(context_menu_x_pos_));
+ }
+ 
+ void Ruler::on_setZeroPosition()
+ {
+-	view_.set_zero_position(get_absolute_time_from_x_pos(mouse_down_point_.x()));
++	view_.set_zero_position(get_absolute_time_from_x_pos(context_menu_x_pos_));
+ }
+ 
+ void Ruler::on_resetZeroPosition()
+@@ -415,6 +426,16 @@
+ 	settings.setValue(GlobalSettings::Key_View_ShowHoverMarker, !state);
+ }
+ 
++void Ruler::on_view_reset()
++{
++    view_.reset_offset();
++}
++
++void Ruler::on_zoom_reset()
++{
++    view_.reset_zoom();
++}
++
+ } // namespace trace
+ } // namespace views
+ } // namespace pv

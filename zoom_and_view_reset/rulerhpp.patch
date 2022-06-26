@@ -1,0 +1,11 @@
+--- original_ruler.hpp	2022-06-27 00:34:54.999359700 +0200
++++ ruler.hpp	2022-06-27 00:28:54.540790400 +0200
+@@ -186,6 +186,8 @@
+ 	void on_setZeroPosition();
+ 	void on_resetZeroPosition();
+ 	void on_toggleHoverMarker();
++    void on_view_reset();
++    void on_zoom_reset();
+ 
+ private:
+ 	/**

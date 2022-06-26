@@ -1,0 +1,16 @@
+--- original_tracetreeitem.hpp	2022-06-27 00:34:55.080412400 +0200
++++ tracetreeitem.hpp	2022-06-27 00:28:54.806392500 +0200
+@@ -119,6 +119,13 @@
+ 	 */
+ 	virtual pair<int, int> v_extents() const = 0;
+ 
++    virtual QMenu* create_view_context_menu(QWidget *parent, QPoint &click_pos);
++
++private Q_SLOTS:
++    void on_view_reset();
++
++    void on_zoom_reset();
++
+ protected:
+ 	TraceTreeItemOwner *owner_;
+ 
